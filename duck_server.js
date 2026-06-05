@@ -1,10 +1,24 @@
 const WebSocket = require('ws');
 const axios = require('axios');
+const express = require('express');
+const http = require('http');
+const path = require('path');
 
 const CHANNEL_ID = 'ff67026a61e0e2688583047d042a715f';
-const WSS_PORT = 6001; // 게임과 겹치지 않게 6001번 사용
+const PORT = process.env.PORT || 6001;
 
-const wss = new WebSocket.Server({ port: WSS_PORT });
+const app = express();
+const server = http.createServer(app);
+
+// 정적 파일 제공 (음성파일, 이미지 등)
+app.use(express.static(__dirname));
+
+// 루트 주소 접속 시 HTML 파일 제공
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '샌드백 채팅창.html'));
+});
+
+const wss = new WebSocket.Server({ server });
 let pingInterval;
 let retryCount = 0; // 재접속 횟수 관리
 
@@ -83,5 +97,10 @@ async function connectChzzk() {
     }
 }
 
-console.log(`[오리 서버] 저사양/게임 안정 모드 가동 (포트: ${WSS_PORT})`);
+console.log(`[오리 서버] 저사양/게임 안정 모드 가동`);
 connectChzzk();
+
+server.listen(PORT, () => {
+    console.log(`✅ 웹 서버 가동 완료! (포트: ${PORT})`);
+    console.log(`👉 OBS 브라우저 소스 주소: http://localhost:${PORT}`);
+});

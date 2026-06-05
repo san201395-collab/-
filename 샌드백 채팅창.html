@@ -129,7 +129,8 @@
         const chatLog = document.getElementById('chat-log');
         const MAX_MESSAGES = 20;
         const MESSAGE_LIFETIME = 300000; // 1분 뒤 삭제
-        const WS_URL = 'ws://localhost:6001';
+        // 클라우드 서버 주소 자동 연결
+        const WS_URL = location.origin.replace(/^http/, 'ws');
         const OWNER_NICKNAME = '샤키리';
 
         const sounds = {
