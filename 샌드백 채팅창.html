@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            background-color: transparent;
+            font-family: 'Nanum Gothic', sans-serif;
+            overflow: hidden;
+            margin: 0;
+            padding: 20px;
+        }
+
+        #chat-log {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            justify-content: flex-end;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .chat-item {
+            display: flex;
+            align-items: flex-start;
+            animation: fadeIn 0.4s ease-out forwards;
+            margin-left: 55px;
+        }
+
+        .message-box {
+            border-radius: 12px;
+            padding: 12px 18px;
+            position: relative;
+            box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.2);
+            max-width: 85%;
+            border: 4px solid #4B0082;
+            background-color: #8E44AD;
+        }
+
+        .message-box::before {
+            position: absolute;
+            left: -55px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #FFF;
+            background: #333;
+            background-size: cover;
+            background-position: center;
+            content: '🦆';
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-item.owner .message-box {
+            background-color: #6A5ACD;
+            border-color: #FFD700;
+        }
+
+        .chat-item.owner .message-box::before {
+            content: '';
+            background-image: url('렉시안.png');
+        }
+
+        .nickname {
+            font-weight: 900;
+            margin-bottom: 5px;
+            display: block;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            color: #FFF;
+        }
+
+        .message {
+            color: #FFFFFF;
+            line-height: 1.5;
+            word-break: break-all;
+            font-size: 1.1em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+
+        .chzzk-emoji {
+            width: 24px;
+            height: 24px;
+            vertical-align: middle;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            to {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+        }
+
+        .chat-item.fade-out {
+            animation: fadeOut 0.4s ease-in forwards;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="chat-log"></div>
+    <script>
+        const chatLog = document.getElementById('chat-log');
+        const MAX_MESSAGES = 20;
+        const MESSAGE_LIFETIME = 300000; // 1분 뒤 삭제
+        const WS_URL = 'ws://localhost:6001';
+        const OWNER_NICKNAME = '샤키리';
+
+        const sounds = {
+            yubunyeo: new Audio('음성파일/유부녀.mp3'),
+            song: new Audio('음성파일/노래.mp3'),
+            gaesori: new Audio('음성파일/개소리.mp3'),
+            takoyaki: new Audio('음성파일/타코야키.mp3'),
+            deungjjak: new Audio('음성파일/등짝.mp3'),
+            sonjabi: new Audio('음성파일/손잡이.mp3'),
+            apa: new Audio('음성파일/아파.mp3'),
+            oksusu: new Audio('음성파일/옥수수.mp3'),
+            yaong: new Audio('음성파일/야옹이.mp3')
+        };
+
+        function playSound(audio) {
+            audio.currentTime = 0;
+            audio.play().catch(() => { });
+        }
+
+        function parseEmoji(text, emojis) {
+            if (!emojis) return text;
+            let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            Object.keys(emojis).forEach(id => {
+                const regex = new RegExp(`\\{:${id}:\\}`, 'g');
+                html = html.replace(regex, `<img src="${emojis[id]}" class="chzzk-emoji">`);
+            });
+            return html;
+        }
+
+        function appendMessage({ nickname, message, emojis, isDonation }) {
+            const isOwner = (nickname === OWNER_NICKNAME);
+
+            if (message.includes('!유부녀')) playSound(sounds.yubunyeo);
+            else if (message.includes('!노래')) playSound(sounds.song);
+            else if (message.includes('!개소리') || message.includes('!왈왈')) playSound(sounds.gaesori);
+            else if (message.includes('!타코야키')) playSound(sounds.takoyaki);
+            else if (message.includes('!등짝')) playSound(sounds.deungjjak);
+            else if (message.includes('!손잡이')) playSound(sounds.sonjabi);
+            else if (message.includes('!아파')) playSound(sounds.apa);
+            else if (message.includes('!옥수수')) playSound(sounds.oksusu);
+            else if (message.includes('!야옹이') && isDonation) playSound(sounds.yaong);
+
+            const item = document.createElement('div');
+            item.className = `chat-item ${isOwner ? 'owner' : 'viewer'}`;
+            item.innerHTML = `<div class="message-box"><span class="nickname">${nickname}</span><span class="message">${parseEmoji(message, emojis)}</span></div>`;
+
+            chatLog.appendChild(item);
+            while (chatLog.children.length > MAX_MESSAGES) chatLog.removeChild(chatLog.firstChild);
+            item.scrollIntoView({ behavior: 'smooth' });
+
+            // 지정된 시간 후 fade-out 애니메이션 적용 후 삭제
+            setTimeout(() => {
+                if (chatLog.contains(item)) {
+                    item.classList.add('fade-out');
+                    setTimeout(() => {
+                        if (chatLog.contains(item)) item.remove();
+                    }, 400); // 애니메이션 소요 시간(0.4초) 후 요소 제거
+                }
+            }, MESSAGE_LIFETIME);
+        }
+
+        function connect() {
+            const ws = new WebSocket(WS_URL);
+            ws.onmessage = (ev) => { try { appendMessage(JSON.parse(ev.data)); } catch (e) { } };
+            ws.onclose = () => setTimeout(connect, 2000);
+        }
+        connect();
+    </script>
+</body>
+
+</html>
